@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { sql } from '@vercel/postgres';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { signIn } from '@/auth';
+import {auth, signIn} from '@/auth';
 import { AuthError } from 'next-auth';
 
 const FormSchema = z.object({
@@ -33,6 +33,25 @@ export type State = {
   };
   message?: string | null;
 };
+
+
+export async function auditLog(invoiceId: string, prev_status: string, new_status: string) {
+  const session = await auth();
+
+  console.log('session => ', session, invoiceId, prev_status, new_status, session?.user?.id);
+
+  try {
+    await sql`
+      INSERT INTO invoices_audit_logs (invoice_id, prev_status, new_status, changer_user_id)
+      VALUES (${invoiceId}, ${prev_status}, ${new_status}, ${session?.user?.id})
+    `;
+  } catch (error) {
+    // If a database error occurs, return a more specific error.
+    return {
+      message: 'Database Error: Failed to Audit Invoice Status Log.',
+    };
+  }
+}
 
 export async function createInvoice(prevState: State, formData: FormData) {
   // Validate form fields using Zod
@@ -95,11 +114,20 @@ export async function updateInvoice(
   const amountInCents = amount * 100;
 
   try {
+    const { rows } = await sql`
+        SELECT status FROM invoices WHERE id = ${id}
+    `;
+
+    const previousStatus = rows[0].status;
+
     await sql`
       UPDATE invoices
       SET customer_id = ${customerId}, amount = ${amountInCents}, status = ${status}
       WHERE id = ${id}
     `;
+
+    await auditLog(id, previousStatus, status);
+
   } catch (error) {
     return { message: 'Database Error: Failed to Update Invoice.' };
   }
@@ -126,11 +154,20 @@ export async function updateInvoiceStatus(
   const { status } = validatedFields.data;
 
   try {
+    const { rows } = await sql`
+        SELECT status FROM invoices WHERE id = ${id}
+    `;
+
+    const previousStatus = rows[0].status;
+
     await sql`
       UPDATE invoices
       SET status = ${status}
       WHERE id = ${id}
     `;
+
+    await auditLog(id, previousStatus, status);
+
   } catch (error) {
     return { message: 'Database Error: Failed to Update Invoice.' };
   }
