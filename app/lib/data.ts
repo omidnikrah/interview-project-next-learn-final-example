@@ -110,8 +110,6 @@ export async function fetchFilteredInvoices(
   try {
     const filterStatusQuery = getFilterByStatusQuery(statusFilter);
 
-    console.log('filterStatusQuery => ', filterStatusQuery);
-
     const invoices = await sql.query<InvoicesTable>(`
       SELECT
         invoices.id,

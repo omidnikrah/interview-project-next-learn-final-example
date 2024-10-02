@@ -38,8 +38,6 @@ export type State = {
 export async function auditLog(invoiceId: string, prev_status: string, new_status: string) {
   const session = await auth();
 
-  console.log('session => ', session, invoiceId, prev_status, new_status, session?.user?.id);
-
   try {
     await sql`
       INSERT INTO invoices_audit_logs (invoice_id, prev_status, new_status, changer_user_id)
