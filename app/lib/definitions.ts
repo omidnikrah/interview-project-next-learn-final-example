@@ -86,3 +86,5 @@ export type InvoiceForm = {
   amount: number;
   status: 'pending' | 'paid';
 };
+
+export type StatusFilters = 'All' | 'Paid' | 'Pending' | 'Overdue' | 'Canceled';

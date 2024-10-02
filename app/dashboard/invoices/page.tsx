@@ -7,6 +7,9 @@ import { InvoicesTableSkeleton } from '@/app/ui/skeletons';
 import { Suspense } from 'react';
 import { fetchInvoicesPages } from '@/app/lib/data';
 import { Metadata } from 'next';
+import InvoicesFilterTab from "@/app/ui/invoices/invoices-filter-tab";
+import {cookies} from "next/headers";
+import {StatusFilters} from "@/app/lib/definitions";
 
 export const metadata: Metadata = {
   title: 'Invoices',
@@ -18,12 +21,34 @@ export default async function Page({
   searchParams?: {
     query?: string;
     page?: string;
+    status?: string;
   };
 }) {
   const query = searchParams?.query || '';
   const currentPage = Number(searchParams?.page) || 1;
 
-  const totalPages = await fetchInvoicesPages(query);
+  const statusFilterParam = (searchParams?.status || '') as StatusFilters;
+  const statusFilterCookie = cookies().get('activeStatusFilter')?.value as StatusFilters;
+  const activeStatus: StatusFilters = statusFilterParam || statusFilterCookie || 'All';
+
+  const totalPages = await fetchInvoicesPages(query, activeStatus);
+
+  const statusFilterTabs = [{
+      id: 'All',
+      title: 'All',
+  }, {
+      id: 'Paid',
+      title: 'Paid',
+  }, {
+      id: 'Pending',
+      title: 'Pending',
+  }, {
+      id: 'Overdue',
+      title: 'Overdue',
+  }, {
+      id: 'Canceled',
+      title: 'Canceled',
+  }]
 
   return (
     <div className="w-full">
@@ -34,8 +59,9 @@ export default async function Page({
         <Search placeholder="Search invoices..." />
         <CreateInvoice />
       </div>
+      <InvoicesFilterTab tabs={statusFilterTabs} activeTab={activeStatus} />
       <Suspense key={query + currentPage} fallback={<InvoicesTableSkeleton />}>
-        <Table query={query} currentPage={currentPage} />
+        <Table query={query} currentPage={currentPage} statusFilter={activeStatus} />
       </Suspense>
       <div className="mt-5 flex w-full justify-center">
         <Pagination totalPages={totalPages} />

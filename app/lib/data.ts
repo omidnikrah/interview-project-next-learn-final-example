@@ -5,7 +5,7 @@ import {
   InvoiceForm,
   InvoicesTable,
   LatestInvoiceRaw,
-  Revenue,
+  Revenue, StatusFilters,
 } from './definitions';
 import { formatCurrency } from './utils';
 
@@ -83,15 +83,36 @@ export async function fetchCardData() {
   }
 }
 
+function getFilterByStatusQuery(status: StatusFilters) {
+  switch (status) {
+    case 'Paid':
+      return "invoices.status='paid'";
+    case 'Pending':
+      return "invoices.status='pending' AND invoices.date > CURRENT_DATE - INTERVAL '14 days'";
+    case 'Overdue':
+      return "invoices.status='pending' AND invoices.date <= CURRENT_DATE - INTERVAL '14 days'";
+    case 'Canceled':
+      return "invoices.status='canceled'";
+    case 'All':
+    default:
+      return 'TRUE'
+  }
+}
+
 const ITEMS_PER_PAGE = 6;
 export async function fetchFilteredInvoices(
   query: string,
   currentPage: number,
+  statusFilter: StatusFilters,
 ) {
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
   try {
-    const invoices = await sql<InvoicesTable>`
+    const filterStatusQuery = getFilterByStatusQuery(statusFilter);
+
+    console.log('filterStatusQuery => ', filterStatusQuery);
+
+    const invoices = await sql.query<InvoicesTable>(`
       SELECT
         invoices.id,
         invoices.amount,
@@ -103,14 +124,24 @@ export async function fetchFilteredInvoices(
       FROM invoices
       JOIN customers ON invoices.customer_id = customers.id
       WHERE
-        customers.name ILIKE ${`%${query}%`} OR
-        customers.email ILIKE ${`%${query}%`} OR
-        invoices.amount::text ILIKE ${`%${query}%`} OR
-        invoices.date::text ILIKE ${`%${query}%`} OR
-        invoices.status ILIKE ${`%${query}%`}
+        (${filterStatusQuery}) AND (
+          customers.name ILIKE $1 OR
+          customers.email ILIKE $2 OR
+          invoices.amount::text ILIKE $3 OR
+          invoices.date::text ILIKE $4 OR
+          invoices.status ILIKE $5
+        )
       ORDER BY invoices.date DESC
-      LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
-    `;
+      LIMIT $6 OFFSET $7
+    `, [
+      `%${query}%`,
+      `%${query}%`,
+      `%${query}%`,
+      `%${query}%`,
+      `%${query}%`,
+      ITEMS_PER_PAGE,
+      offset,
+    ]);
 
     return invoices.rows;
   } catch (error) {
@@ -119,18 +150,28 @@ export async function fetchFilteredInvoices(
   }
 }
 
-export async function fetchInvoicesPages(query: string) {
+export async function fetchInvoicesPages(query: string, statusFilter: StatusFilters) {
   try {
-    const count = await sql`SELECT COUNT(*)
+    const filterStatusQuery = getFilterByStatusQuery(statusFilter);
+
+    const count = await sql.query(`SELECT COUNT(*)
     FROM invoices
     JOIN customers ON invoices.customer_id = customers.id
     WHERE
-      customers.name ILIKE ${`%${query}%`} OR
-      customers.email ILIKE ${`%${query}%`} OR
-      invoices.amount::text ILIKE ${`%${query}%`} OR
-      invoices.date::text ILIKE ${`%${query}%`} OR
-      invoices.status ILIKE ${`%${query}%`}
-  `;
+      (${filterStatusQuery}) AND (
+        customers.name ILIKE $1 OR
+        customers.email ILIKE $2 OR
+        invoices.amount::text ILIKE $3 OR
+        invoices.date::text ILIKE $4 OR
+        invoices.status ILIKE $5
+      )
+  `, [
+      `%${query}%`,
+      `%${query}%`,
+      `%${query}%`,
+      `%${query}%`,
+      `%${query}%`,
+    ]);
 
     const totalPages = Math.ceil(Number(count.rows[0].count) / ITEMS_PER_PAGE);
     return totalPages;

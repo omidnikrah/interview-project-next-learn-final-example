@@ -3,15 +3,18 @@ import { UpdateInvoice, DeleteInvoice } from '@/app/ui/invoices/buttons';
 import { formatDateToLocal, formatCurrency } from '@/app/lib/utils';
 import { fetchFilteredInvoices } from '@/app/lib/data';
 import InvoiceStatusDropdown from "@/app/ui/invoices/invoice-status-dropdown";
+import { StatusFilters } from "@/app/lib/definitions";
 
 export default async function InvoicesTable({
   query,
   currentPage,
+  statusFilter,
 }: {
   query: string;
   currentPage: number;
+  statusFilter: StatusFilters,
 }) {
-  const invoices = await fetchFilteredInvoices(query, currentPage);
+  const invoices = await fetchFilteredInvoices(query, currentPage, statusFilter);
 
   return (
     <div className="mt-6 flow-root">
