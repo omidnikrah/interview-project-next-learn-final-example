@@ -67,3 +67,10 @@ export const generatePagination = (currentPage: number, totalPages: number) => {
     totalPages,
   ];
 };
+
+export const isOver14PastDays = (date: string): boolean => {
+  const now = new Date();
+  const fourteenDaysAgo = new Date(now.setDate(now.getDate() - 14));
+
+  return (date as unknown as Date) < fourteenDaysAgo;
+}
