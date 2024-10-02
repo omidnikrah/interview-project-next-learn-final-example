@@ -1,5 +1,6 @@
 import { sql } from '@vercel/postgres';
 import {
+  AuditLog,
   CustomerField,
   CustomersTableType,
   InvoiceForm,
@@ -252,5 +253,23 @@ export async function fetchFilteredCustomers(query: string) {
   } catch (err) {
     console.error('Database Error:', err);
     throw new Error('Failed to fetch customer table.');
+  }
+}
+
+
+export async function fetchAuditLogs(invoiceId: string) {
+  try {
+    const data = await sql<AuditLog>`
+      SELECT logs.*, users.name AS user_name
+      FROM invoices_audit_logs AS logs
+      JOIN users ON logs.changer_user_id = users.id
+      WHERE invoice_id=${invoiceId}
+      ORDER BY logs.changed_at DESC
+    `;
+
+    return data.rows;
+  } catch (err) {
+    console.error('Database Error:', err);
+    throw new Error('Failed to fetch all audit logs.');
   }
 }

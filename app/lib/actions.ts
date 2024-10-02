@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {auth, signIn} from '@/auth';
 import { AuthError } from 'next-auth';
+import {AuditLog} from "@/app/lib/definitions";
 
 const FormSchema = z.object({
   id: z.string(),
@@ -206,4 +207,25 @@ export async function authenticate(
     }
     throw error;
   }
+}
+
+export async function restoreLog(
+    auditLogData: AuditLog
+) {
+  const { invoice_id, prev_status, new_status } = auditLogData;
+
+  try {
+    await sql`
+      UPDATE invoices
+      SET status = ${prev_status}
+      WHERE id = ${invoice_id}
+    `;
+
+    await auditLog(invoice_id, new_status, prev_status);
+
+  } catch (error) {
+    return { message: 'Database Error: Failed to Restore Invoice Status.' };
+  }
+
+  revalidatePath(`/dashboard/invoices/${invoice_id}`);
 }

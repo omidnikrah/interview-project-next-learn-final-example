@@ -88,3 +88,13 @@ export type InvoiceForm = {
 };
 
 export type StatusFilters = 'All' | 'Paid' | 'Pending' | 'Overdue' | 'Canceled';
+
+export type AuditLog = {
+  id: string;
+  invoice_id: string;
+  prev_status: 'pending' | 'paid' | 'canceled';
+  new_status: 'pending' | 'paid' | 'canceled';
+  changer_user_id: string;
+  user_name: string;
+  changed_at: string;
+}
