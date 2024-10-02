@@ -20,5 +20,9 @@ export const authConfig = {
       }
       return true;
     },
+    async session({ session, token }) {
+      session.user.id = String(token.sub);
+      return session;
+    }
   },
 } satisfies NextAuthConfig;
